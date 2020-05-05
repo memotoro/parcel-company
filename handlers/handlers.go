@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -101,7 +103,9 @@ func LoadParcelToTruck(myApp *data.App) func(http.ResponseWriter, *http.Request)
 
 		parcel.ID = parcelID
 
-		result := truck.AddParcel(parcel)
+		now := time.Now()
+
+		result := truck.AddParcel(parcel, now)
 		if !result {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -138,7 +142,9 @@ func UnloadParcelFromTruck(myApp *data.App) func(http.ResponseWriter, *http.Requ
 			return
 		}
 
-		result := truck.RemoveParcel(parcelID)
+		now := time.Now()
+
+		result := truck.RemoveParcel(parcelID, now)
 		if !result {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -146,5 +152,62 @@ func UnloadParcelFromTruck(myApp *data.App) func(http.ResponseWriter, *http.Requ
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(truck)
+	}
+}
+
+// GetTruckState -
+func GetTruckState(myApp *data.App) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		truckIDValue := vars["truckID"]
+		timeStampValue := vars["timeStamp"]
+
+		truckID, err := strconv.ParseInt(truckIDValue, 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		timeStamp, err := time.Parse(time.RFC3339, timeStampValue)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		truck := myApp.Trucks[truckID]
+		if truck == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		/*
+			state := truck.History[timeStampValue]
+			if state == nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		*/
+
+		var selectedStated *data.TruckState
+		for index := range truck.History {
+			history := truck.History[index]
+			timeStampHistory, err := time.Parse(time.RFC3339, history.TimeStamp)
+			if err != nil {
+				log.Printf("err %v", err)
+			}
+			if timeStampHistory.After(timeStamp) {
+				selectedStated = truck.History[index-1]
+				break
+			}
+		}
+
+		// 2020-01-01 9am
+		// 2020-01-01 11am
+		// 2020-01-01 1pm
+
+		// 2020-01-01 10pm
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(selectedStated)
 	}
 }

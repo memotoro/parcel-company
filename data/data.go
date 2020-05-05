@@ -1,6 +1,8 @@
 package data
 
-import "encoding/json"
+import (
+	"time"
+)
 
 // Parcel -
 type Parcel struct {
@@ -10,12 +12,18 @@ type Parcel struct {
 
 // Truck -
 type Truck struct {
-	ID           int64    `json:"id"`
-	Model        string   `json:"model"`
-	CapacityKG   float64  `json:"capacityKg"`
-	Parcels      []Parcel `json:"parcels,omitempty"`
-	TotalWeight  float64  `json:"totalWeight"`
-	TotalParcels int64    `json:"totalParcels"`
+	ID         int64         `json:"id"`
+	Model      string        `json:"model"`
+	CapacityKG float64       `json:"capacityKg"`
+	Parcels    []Parcel      `json:"parcels,omitempty"`
+	History    []*TruckState `json:"history"`
+}
+
+// TruckState -
+type TruckState struct {
+	TimeStamp    string  `json:"timeStamp"`
+	TotalWeight  float64 `json:"totalWeight"`
+	TotalParcels int64   `json:"totalParcels"`
 }
 
 // App -
@@ -46,17 +54,26 @@ func (t *Truck) GetTotalWeight() float64 {
 }
 
 // AddParcel -
-func (t *Truck) AddParcel(parcel Parcel) bool {
+func (t *Truck) AddParcel(parcel Parcel, now time.Time) bool {
 	if parcel.WeightKG+t.GetTotalWeight() > t.CapacityKG {
 		return false
 	}
 
 	t.Parcels = append(t.Parcels, parcel)
+
+	if t.History == nil {
+		t.History = make([]*TruckState, 0)
+	}
+
+	nowKey := now.Format(time.RFC3339)
+
+	t.History = append(t.History, &TruckState{TimeStamp: nowKey, TotalParcels: t.GetTotalParcels(), TotalWeight: t.GetTotalWeight()})
+
 	return true
 }
 
 // RemoveParcel -
-func (t *Truck) RemoveParcel(parcelID int64) bool {
+func (t *Truck) RemoveParcel(parcelID int64, now time.Time) bool {
 	parcelIndex := -1
 	for index := range t.Parcels {
 		parcel := t.Parcels[index]
@@ -72,10 +89,15 @@ func (t *Truck) RemoveParcel(parcelID int64) bool {
 
 	t.Parcels = append(t.Parcels[:parcelIndex], t.Parcels[parcelIndex+1:]...)
 
+	nowKey := now.Format(time.RFC3339)
+
+	t.History = append(t.History, &TruckState{TimeStamp: nowKey, TotalParcels: t.GetTotalParcels(), TotalWeight: t.GetTotalWeight()})
+
 	return true
 }
 
 // MarshalJSON -
+/*
 func (t *Truck) MarshalJSON() ([]byte, error) {
 	type truck Truck
 	t.TotalWeight = t.GetTotalWeight()
@@ -83,3 +105,4 @@ func (t *Truck) MarshalJSON() ([]byte, error) {
 	newTruck := truck(*t)
 	return json.Marshal(newTruck)
 }
+*/

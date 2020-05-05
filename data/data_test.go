@@ -1,8 +1,10 @@
 package data
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +45,9 @@ func TestAddParcelToTruck(t *testing.T) {
 	weight1 := float64(20.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
+
+	truck.AddParcel(*parcel1, now)
 
 	assert.NotNil(t, truck.Parcels)
 	assert.Equal(t, 1, len(truck.Parcels))
@@ -54,7 +58,7 @@ func TestAddParcelToTruck(t *testing.T) {
 	weight2 := float64(10.5)
 	parcel2 := createParcel(parcelID2, weight2)
 
-	truck.AddParcel(*parcel2)
+	truck.AddParcel(*parcel2, now)
 
 	assert.NotNil(t, truck.Parcels)
 	assert.Equal(t, 2, len(truck.Parcels))
@@ -72,13 +76,15 @@ func TestAddParcelToTruckOverload(t *testing.T) {
 	weight1 := float64(10.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
+
+	truck.AddParcel(*parcel1, now)
 
 	parcelID2 := int64(2)
 	weight2 := float64(5)
 	parcel2 := createParcel(parcelID2, weight2)
 
-	result := truck.AddParcel(*parcel2)
+	result := truck.AddParcel(*parcel2, now)
 
 	assert.NotNil(t, truck.Parcels)
 	assert.Equal(t, 1, len(truck.Parcels))
@@ -94,24 +100,26 @@ func TestRemoveParcelFromTruck(t *testing.T) {
 	weight1 := float64(10.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
+
+	truck.AddParcel(*parcel1, now)
 
 	parcelID2 := int64(2)
 	weight2 := float64(20.5)
 	parcel2 := createParcel(parcelID2, weight2)
 
-	truck.AddParcel(*parcel2)
+	truck.AddParcel(*parcel2, now)
 
 	parcelID3 := int64(3)
 	weight3 := float64(30.5)
 	parcel3 := createParcel(parcelID3, weight3)
 
-	truck.AddParcel(*parcel3)
+	truck.AddParcel(*parcel3, now)
 
 	assert.NotNil(t, truck.Parcels)
 	assert.Equal(t, 3, len(truck.Parcels))
 
-	result := truck.RemoveParcel(parcelID2)
+	result := truck.RemoveParcel(parcelID2, now)
 
 	assert.Equal(t, true, result)
 	assert.Equal(t, 2, len(truck.Parcels))
@@ -126,11 +134,13 @@ func TestRemoveNonLoadedParcelFromTruck(t *testing.T) {
 	weight1 := float64(10.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
+
+	truck.AddParcel(*parcel1, now)
 
 	parcelID2 := int64(10)
 
-	result := truck.RemoveParcel(parcelID2)
+	result := truck.RemoveParcel(parcelID2, now)
 
 	assert.Equal(t, false, result)
 	assert.Equal(t, 1, len(truck.Parcels))
@@ -145,13 +155,15 @@ func TestGetTruckTotalWeigth(t *testing.T) {
 	weight1 := float64(10.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
+
+	truck.AddParcel(*parcel1, now)
 
 	parcelID2 := int64(2)
 	weight2 := float64(20.5)
 	parcel2 := createParcel(parcelID2, weight2)
 
-	truck.AddParcel(*parcel2)
+	truck.AddParcel(*parcel2, now)
 
 	totalWeight := truck.GetTotalWeight()
 
@@ -168,10 +180,12 @@ func TestGetTruckJSON(t *testing.T) {
 	weight1 := float64(20.5)
 	parcel1 := createParcel(parcelID1, weight1)
 
-	truck.AddParcel(*parcel1)
+	now := time.Now()
 
-	jsonData, err := truck.MarshalJSON()
-	jsonExpected := `{"id":1,"model":"Model  1","capacityKg":50.5,"parcels":[{"id":1,"weightKg":20.5}],"totalWeight":20.5,"totalParcels":1}`
+	truck.AddParcel(*parcel1, now)
+
+	jsonData, err := json.Marshal(truck)
+	jsonExpected := fmt.Sprintf(`{"id":1,"model":"Model  1","capacityKg":50.5,"parcels":[{"id":1,"weightKg":20.5}],"history":{"%v":{"totalWeight":20.5,"totalParcels":1}}}`, now.Format(time.RFC3339))
 
 	assert.Nil(t, err)
 	assert.NotNil(t, truck.Parcels)
